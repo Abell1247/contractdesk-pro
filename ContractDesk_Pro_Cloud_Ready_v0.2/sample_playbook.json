@@ -1,0 +1,8 @@
+{
+  "name": "EXAMPLE ONLY — replace with company-approved deal desk playbook",
+  "version": "example-v1",
+  "max_net_payment_days": 60,
+  "min_nonrenewal_notice_days": 30,
+  "max_breach_notification_hours": 72,
+  "notes": "These thresholds are illustrative, not BoodleBox policies and not legal advice. No approvals are automated."
+}

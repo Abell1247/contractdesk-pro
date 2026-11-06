@@ -1,0 +1,18 @@
+FICTIONAL SAMPLE — FOR TESTING ONLY — NOT A REAL AGREEMENT
+
+DATA PROCESSING ADDENDUM
+This Data Processing Addendum ("DPA") supplements the Master Services Agreement between Northstar Analytics, Inc. (Processor) and Lakewood Community College (Controller).
+
+1. PROCESSING. Processor processes personal data solely to provide the subscribed services, following documented instructions from Controller.
+
+2. SUBPROCESSORS. Processor will maintain a subprocessor list and provide thirty (30) days' notice of new subprocessors. Controller may object on reasonable data-protection grounds.
+
+3. DATA SECURITY. Processor will implement appropriate technical and organizational measures, including encryption in transit and at rest and role-based access controls.
+
+4. BREACH NOTIFICATION. Processor will notify Controller of a confirmed Personal Data Breach without undue delay and no later than seventy-two (72) hours after confirmation.
+
+5. DELETION. At termination, personal data will be returned or deleted subject to lawful retention requirements.
+
+6. CROSS-BORDER TRANSFER. Transfers, if any, must use appropriate safeguards where required by law.
+
+7. AUDIT. Reasonable audit and information rights are subject to confidentiality and security protections.

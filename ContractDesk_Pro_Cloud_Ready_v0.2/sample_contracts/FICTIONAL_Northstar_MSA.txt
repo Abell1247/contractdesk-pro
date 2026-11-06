@@ -1,0 +1,32 @@
+FICTIONAL SAMPLE — FOR TESTING ONLY — NOT A REAL AGREEMENT
+
+MASTER SERVICES AGREEMENT
+This Master Services Agreement ("Agreement") is entered into as of January 1, 2026 ("Effective Date") by and between Northstar Analytics, Inc., a Colorado corporation ("Provider"), and Lakewood Community College ("Customer").
+
+1. SERVICES. Provider will provide a cloud-based subscription platform under applicable order forms. Each order form specifies products, users, subscription fees, and start dates.
+
+2. INITIAL TERM AND RENEWAL. The initial term is twelve (12) months beginning on the Effective Date. This Agreement will automatically renew for successive twelve-month terms unless either party gives written notice of non-renewal at least fifteen (15) days before the end of the then-current term.
+
+3. FEES AND PAYMENT. Subscription fees will be specified in the Order Form. Invoices are due Net 75 from receipt. Late fees are subject to applicable law.
+
+4. CONFIDENTIALITY. Each party will protect the other party's Confidential Information and use it only for performing this Agreement. This section survives termination for three years.
+
+5. DATA PROCESSING. Customer and Provider intend to execute a separate Data Processing Addendum (DPA) addressing personal data. No DPA is attached to this sample.
+
+6. SECURITY INCIDENTS. Provider will notify Customer of a confirmed security incident affecting Customer Personal Data within ninety-six (96) hours after confirmation.
+
+7. LIMITATION OF LIABILITY. Except for fraud and willful misconduct, each party's aggregate liability shall not exceed the total fees paid under this Agreement in the twelve months preceding the claim.
+
+8. INDEMNIFICATION. Provider will indemnify Customer against third-party claims that the subscription service infringes intellectual property rights, subject to timely notice and Provider's control of the defense.
+
+9. TERMINATION. Either party may terminate this Agreement for material breach if the breach is not cured within thirty (30) days after written notice.
+
+10. GOVERNING LAW. This Agreement is governed by the laws of the State of Colorado without regard to conflict-of-law principles.
+
+11. ASSIGNMENT. Neither party may assign this Agreement without the other party's consent, except to a successor in connection with a merger or sale of substantially all assets.
+
+12. INTELLECTUAL PROPERTY. Provider retains ownership of its platform and pre-existing technology. Customer owns its Customer Data.
+
+13. SERVICE LEVEL. Provider targets 99.9% monthly uptime; service credits, if any, are defined in the applicable Order Form.
+
+14. SIGNATURES. This document is a fictional training specimen, not a binding contract.
