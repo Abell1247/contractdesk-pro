@@ -1,6 +1,6 @@
 # ContractDesk Pro v0.2 — evidence-first deal desk workbench
 
-**Independent portfolio application. Not affiliated with BoodleBox. Not legal advice, a legal service, or a production-ready contract management platform.**
+**Independent contract-operations portfolio application. Not legal advice, a legal service, or a production-ready contract management platform. Use fictional documents only for public demonstrations.**
 
 The design goal is to demonstrate **operational contract intelligence**, not merely a text-generation chatbot. The app takes text-based agreements, extracts key terms, compares a limited set of structured conditions to a **fictional sample policy**, asks for authorized human decisions, and exports source-backed review packets. Optional AI adds a source-grounded issue-spotting memo and Q&A.
 

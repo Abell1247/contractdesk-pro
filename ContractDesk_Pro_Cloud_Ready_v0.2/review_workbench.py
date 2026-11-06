@@ -12,6 +12,7 @@ import json
 import re
 from typing import Any
 from engine import TERMS, review_against_playbook, local_extract, normalized
+from deal_intelligence import classify_document, applicable_fields, required_checks, policy_flags
 
 PROVISION_OWNERS = {
     "Agreement Type": "Deal Desk", "Parties": "Deal Desk", "Effective Date": "Deal Desk", "Contract Term": "Deal Desk",
@@ -34,17 +35,21 @@ PROVISION_PURPOSE = {
     "Intellectual Property": "Determine ownership, license scope, and residual rights with counsel.",
     "Fees / Pricing": "Confirm all commercial details match the order form and approvals.",
 }
-SEVERITY_SORT={"High attention":0,"Review needed":1,"Evidence located":2,"Not reviewed":3}
+SEVERITY_SORT={"High attention":0,"Review needed":1,"Evidence located":2,"Not located — optional check":3,"Not reviewed":4}
 
 
 def build_review_matrix(doc:dict, findings:list[dict]|None, playbook:dict)->list[dict]:
     """Categorize issues for *review*, never auto-approve anything."""
     findings = findings or []
     by_field={r['field']:r for r in findings}
-    exceptions=review_against_playbook(findings,playbook) if findings else []
+    doc_type=classify_document(doc)["type"]
+    exceptions=policy_flags(findings,playbook,doc_type) if findings else []
+    scope=applicable_fields(doc_type)
+    must_verify=required_checks(doc_type)
     evidence_by_id={c['source_id']: c for c in doc.get('chunks',[])}
     rows=[]
     for field in TERMS:
+        if field not in scope: continue
         finding=by_field.get(field,{})
         sid=finding.get('source_id','')
         related=[flag for flag in exceptions if flag.get('field')==field]
@@ -53,11 +58,12 @@ def build_review_matrix(doc:dict, findings:list[dict]|None, playbook:dict)->list
             attention=("High attention" if any("privacy" in f['priority'].lower() or "security" in f['priority'].lower() for f in related)
                        else "Review needed")
         elif not sid:
-            attention="Review needed"
+            attention="Review needed" if field in must_verify else "Not located — optional check"
         else:
             attention="Evidence located"
         rows.append({
             'Clause':field,'Attention':attention,'Evidence':"Found" if sid in evidence_by_id else "Not located",
+            'Document type':doc_type,'Source excerpt':str(finding.get('evidence',''))[:600],
             'Source':sid, 'Review owner':related[0]['route_to'] if related else PROVISION_OWNERS.get(field,'Deal Desk'),
             'What to verify':related[0]['review_question'] if related else PROVISION_PURPOSE.get(field,'Verify meaning, context, and any related exhibits.'),
             'Extracted detail':str(finding.get('value','Not yet extracted'))[:340],
@@ -78,11 +84,12 @@ def operational_score(matrix:list[dict])->dict:
 def create_review_packet(doc, findings, playbook, meta=None, notes=None)->str:
     meta=meta or {}; notes=notes or []
     matrix=build_review_matrix(doc,findings,playbook)
-    flags=review_against_playbook(findings or [],playbook) if findings else []
+    doc_type=classify_document(doc)["type"]
+    flags=policy_flags(findings or [],playbook,doc_type) if findings else []
     scored=operational_score(matrix)
     lines=["CONTRACTDESK — FIRST-PASS REVIEW PACK",f"Agreement: {doc['name']}",f"Document fingerprint: {doc['doc_id']}",
            f"Deal: {meta.get('deal','Unassigned')}",f"Owner: {meta.get('owner','Unassigned')}",
-           f"Status: {meta.get('status','New')}",
+           f"Status: {meta.get('status','New')}",f"Classified document: {doc_type} (heuristic; verify)",
            f"Triage (not legal risk): {scored['high']} high attention / {scored['review']} review needed / {scored['located']} evidence located",
            "", "AUTOMATED LIMITATIONS",
            "No legal approval or compliance finding. 'Not located' does not establish absence. Quotations and exhibits require human verification.",

@@ -17,6 +17,7 @@ from engine import (parse_document, local_extract, review_against_playbook,
                     registry_row, rank_chunks, document_index, source_lookup)
 from ai_backend import ai_extract, ai_answer, ai_issue_spot
 from evaluation import run_fixture_evaluation
+from deal_intelligence import classify_document, policy_flags, term_highlights, package_summary
 from review_workbench import (build_review_matrix, operational_score,
                               create_review_packet, compare_versions, new_event, event_csv,
                               metrics_snapshot)
@@ -39,7 +40,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]{border-radius:15px}
 .small-label{color:#64748b;font-size:.83rem}
 </style>''',unsafe_allow_html=True)
 
-for key,default in [('docs',{}),('findings',{}),('review_notes',{}),('review_meta',{}),('review_decisions',{}),('chat',[]),('issue_spots',{}),('events',[])]:
+for key,default in [('docs',{}),('findings',{}),('review_notes',{}),('review_meta',{}),('review_decisions',{}),('chat',[]),('issue_spots',{}),('events',[]),('demo_step',0)]:
     if key not in st.session_state: st.session_state[key]=default
 if 'playbook' not in st.session_state:
     st.session_state.playbook=json.loads((ROOT/'sample_playbook.json').read_text('utf-8'))
@@ -61,6 +62,7 @@ def add_doc(name,raw,sample=False):
     st.session_state.docs[doc['doc_id']]=doc
     st.session_state.review_meta[doc['doc_id']]={'deal':name.rsplit('.',1)[0], 'owner':'', 'status':'New',
                                                'counterparty':'', 'next_action':'', 'updated_at':datetime.now(timezone.utc).isoformat()}
+    doc['type_assessment']=classify_document(doc)
     record('Sample loaded' if sample else 'Document uploaded',doc['doc_id'],name)
     return True
 
@@ -68,9 +70,9 @@ def add_doc(name,raw,sample=False):
 def provider_config():
     with st.sidebar:
         st.markdown('<div class="product-kicker">CONTRACTDESK / PRO</div>',unsafe_allow_html=True)
-        st.caption('Independent portfolio build · v0.2')
+        st.caption('Independent portfolio build · v0.3')
         st.divider()
-        nav=st.radio('WORKSPACE',["Overview", "Agreements", "Review workbench", "Compare drafts", "Contract copilot", "Operations & playbook"],
+        nav=st.radio('WORKSPACE',["Guided demo", "Overview", "Agreements", "Review workbench", "Compare drafts", "Contract copilot", "Operations & playbook"],
                      label_visibility='collapsed')
         st.divider()
         st.subheader('AI processing')
@@ -98,10 +100,112 @@ metrics=metrics_snapshot(st.session_state.events,st.session_state.docs,st.sessio
 
 st.markdown('<div class="product-kicker">CONTRACT INTELLIGENCE / DEAL OPERATIONS</div>',unsafe_allow_html=True)
 st.title('ContractDesk Pro')
-st.markdown('<p class="product-sub">Review workbench  /  policy-based issue spotting  /  version comparison  /  traceable handoffs</p>',unsafe_allow_html=True)
+st.markdown('<p class="product-sub">Agreement packages  /  source-backed review  /  policy exceptions  /  documented human decisions</p>',unsafe_allow_html=True)
 st.markdown('<div class="product-banner"><strong>First-pass analysis, not automated legal approval.</strong> Findings are review suggestions supported by document excerpts. Example policy thresholds are fictional. Use only documents you are authorized to process.</div>',unsafe_allow_html=True)
 
-if nav=='Overview':
+DEMO_DEAL='Northstar Analytics / Lakewood Community College — FICTIONAL'
+
+
+def load_fictional_deal():
+    for path in sorted((ROOT/'sample_contracts').glob('*.txt')):
+        add_doc(path.name,path.read_bytes(),sample=True)
+    for did,doc in st.session_state.docs.items():
+        if doc['name'].startswith('FICTIONAL_Northstar_'):
+            st.session_state.review_meta[did]['deal']=DEMO_DEAL
+            st.session_state.review_meta[did]['counterparty']='Lakewood Community College (fictional)'
+    st.session_state.demo_step=max(1,st.session_state.demo_step)
+
+
+def demo_documents():
+    return {doc['name']: (did,doc) for did,doc in st.session_state.docs.items()
+            if doc['name'].startswith('FICTIONAL_Northstar_')}
+
+
+if nav=='Guided demo':
+    st.header('Three-minute contract review / guided experience')
+    st.caption('A fictional SaaS procurement case. Runs without a model or API key. Each stage shows real deterministic analysis; no legal decisions are automated.')
+    step=int(st.session_state.demo_step)
+    st.progress(min(step,4)/4)
+    a,b,c,d=st.columns(4)
+    a.metric('01 · Intake','Ready' if step>=1 else 'Start')
+    b.metric('02 · Triage','Complete' if step>=2 else 'Pending')
+    c.metric('03 · Compare','Complete' if step>=3 else 'Pending')
+    d.metric('04 · Handoff','Prepared' if step>=4 else 'Pending')
+    if st.button('1 · Load fictional contract package',type='primary'):
+        load_fictional_deal()
+        st.rerun()
+    if step>=1:
+        docs=demo_documents()
+        bundle=package_summary(st.session_state.docs,st.session_state.review_meta,DEMO_DEAL)
+        st.subheader('Stage 1 · Intake and agreement package')
+        st.dataframe(pd.DataFrame([{'Document':name,'Type':classify_document(doc)['type'],
+                                   'Source pages':len(doc['pages'])} for name,(did,doc) in docs.items()]),
+                     hide_index=True,use_container_width=True)
+        for note in bundle['notes']: st.info(note)
+        st.caption('A matching deal label groups files; association does not establish execution, incorporation, or precedence.')
+        if st.button('2 · Run evidence-based contract triage'):
+            for name,(did,doc) in docs.items():
+                st.session_state.findings[did]=local_extract(doc)
+                record('Extraction completed',did,'Offline fictional demo')
+            st.session_state.demo_step=max(2,st.session_state.demo_step)
+            st.rerun()
+    if step>=2:
+        docs=demo_documents()
+        st.subheader('Stage 2 · Playbook exceptions and supporting evidence')
+        msa=docs.get('FICTIONAL_Northstar_MSA.txt')
+        dpa=docs.get('FICTIONAL_Northstar_DPA.txt')
+        if msa:
+            did,doc=msa; findings=st.session_state.findings.get(did,[])
+            matrix=build_review_matrix(doc,findings,st.session_state.playbook)
+            flags=policy_flags(findings,st.session_state.playbook,'MSA')
+            k1,k2,k3=st.columns(3)
+            k1.metric('MSA policy prompts',len(flags))
+            k2.metric('MSA source passages',len(doc['chunks']))
+            k3.metric('MSA scoped clauses',len(matrix))
+            for flag in flags[:5]:
+                with st.container(border=True):
+                    st.markdown(f"**{flag['field']} · {flag['route_to']}**")
+                    st.write(flag['review_question'])
+                    if flag['source_id']:
+                        st.caption(f"Source: {doc['name']} / {flag['source_id']}")
+                        st.code(flag['evidence'],language=None)
+                    else:
+                        st.caption('Clause not confidently located — review the source manually.')
+            for item in term_highlights(findings,'MSA'):
+                st.caption(f"Extracted indicator: {item['label']} — {item['value']} {item['unit']} · {item['source_id']}")
+        if dpa:
+            did,doc=dpa; findings=st.session_state.findings.get(did,[])
+            matrix=build_review_matrix(doc,findings,st.session_state.playbook)
+            st.info(f"Separate DPA analysis: {len(matrix)} relevant fields checked; MSA-only commercial clauses excluded from its queue.")
+        if st.button('3 · Compare original and revised MSA'):
+            st.session_state.demo_step=max(3,st.session_state.demo_step)
+            record('Guided demo comparison viewed')
+            st.rerun()
+    if step>=3:
+        docs=demo_documents(); old=docs.get('FICTIONAL_Northstar_MSA.txt');new=docs.get('FICTIONAL_Northstar_MSA_Revised.txt')
+        if old and new:
+            result=compare_versions(old[1],new[1])
+            st.subheader('Stage 3 · Negotiation change detection')
+            st.markdown('**Potentially affected subjects:** '+(', '.join(result['potentially_affected_fields']) or 'No defined topic detected'))
+            st.caption('Text-level differences only; no legal conclusion or Word track-changes support.')
+            with st.expander('Inspect actual text-level diff',expanded=False): st.code(result['diff'],language='diff')
+        if st.button('4 · Generate human-review handoff'):
+            st.session_state.demo_step=max(4,st.session_state.demo_step)
+            record('Guided demo reviewer packet prepared')
+            st.rerun()
+    if step>=4:
+        docs=demo_documents(); msa=docs.get('FICTIONAL_Northstar_MSA.txt')
+        if msa:
+            did,doc=msa
+            packet=create_review_packet(doc,st.session_state.findings.get(did,[]),st.session_state.playbook,
+                                        st.session_state.review_meta.get(did,{}))
+            st.subheader('Stage 4 · Reviewer handoff')
+            st.success('First-pass packet prepared for authorized human review. No contract was approved or sent.')
+            st.download_button('Download source-backed review packet',packet,
+                               file_name='FICTIONAL_Northstar_Review_Packet.txt',mime='text/plain')
+            st.caption('Next: use Review workbench to record a reviewer decision, or Agreements to edit deal ownership.')
+
+elif nav=='Overview':
     a,b,c,d=st.columns(4)
     a.metric('Agreements in session',metrics['documents'])
     b.metric('Documents reviewed',metrics['reviewed_documents'])
@@ -115,8 +219,8 @@ if nav=='Overview':
             for did,doc in st.session_state.docs.items():
                 meta=st.session_state.review_meta.get(did,{})
                 finding=st.session_state.findings.get(did)
-                flags=review_against_playbook(finding,st.session_state.playbook) if finding else []
-                rows.append({'Agreement':doc['name'], 'Deal':meta.get('deal',''), 'Stage':meta.get('status','New'),
+                flags=policy_flags(finding,st.session_state.playbook,classify_document(doc)['type']) if finding else []
+                rows.append({'Agreement':doc['name'], 'Type':classify_document(doc)['type'], 'Deal':meta.get('deal',''), 'Stage':meta.get('status','New'),
                              'Review owner':meta.get('owner','Unassigned'),
                              'Playbook review flags':len(flags) if finding else 'Not analyzed',
                              'Evidence coverage':'Extracted' if finding else 'Pending'})
@@ -124,11 +228,8 @@ if nav=='Overview':
         else:
             st.info('No contracts yet. Start with the fictional test portfolio to see the full workflow.')
         if st.button('Load fictional demonstration portfolio',type='primary'):
-            ct=0
-            for path in sorted((ROOT/'sample_contracts').glob('*.txt')):
-                ct+=int(add_doc(path.name,path.read_bytes(),sample=True))
-            if ct: st.success(f'Loaded {ct} fictional agreements. Choose Review workbench next.')
-            else: st.info('Demo documents are already in this session.')
+            load_fictional_deal()
+            st.success('Fictional contract package loaded; open Guided demo or Review workbench.')
     with right:
         st.subheader('Operating model')
         for step,desc in [
@@ -139,6 +240,14 @@ if nav=='Overview':
             ('05 · Improve','Track actual workflow actions and compare versions.')]:
             st.markdown(f'**{step}**  \n{desc}')
         st.caption('AI-powered issue spotting is optional. Human review remains mandatory.')
+    if st.session_state.docs:
+        st.subheader('Registered agreement packages')
+        deals=sorted({m.get('deal','').strip() for m in st.session_state.review_meta.values() if m.get('deal','').strip()})
+        for deal in deals:
+            summary=package_summary(st.session_state.docs,st.session_state.review_meta,deal)
+            with st.expander(f"{deal} · {summary['documents']} file(s)"):
+                st.write('Document types: '+', '.join(f"{k}: {v}" for k,v in summary['types'].items()))
+                for note in summary['notes']: st.info(note)
     st.divider()
     st.subheader('What this version is designed to prove')
     p,q,r=st.columns(3)
@@ -163,10 +272,8 @@ elif nav=='Agreements':
                     st.success(f'Added {ok} new documents. Duplicate byte-identical files were skipped.')
         with col2:
             if st.button('Load fictional samples',use_container_width=True):
-                ok=0
-                for path in sorted((ROOT/'sample_contracts').glob('*.txt')):
-                    ok+=int(add_doc(path.name,path.read_bytes(),sample=True))
-                st.success(f'Added {ok} fictional agreements.')
+                load_fictional_deal()
+                st.success('Fictional package loaded.')
     with b:
         st.metric('Registered documents',len(st.session_state.docs))
         st.caption('In this version, registry and files live only in your current session. Restart/reload may clear the work. Export before exiting.')
@@ -177,7 +284,7 @@ elif nav=='Agreements':
         for did,doc in st.session_state.docs.items():
             m=st.session_state.review_meta.get(did,{})
             row=registry_row(doc,st.session_state.findings.get(did))
-            row.update({'Deal':m.get('deal',''),'Counterparty':m.get('counterparty',''),'Stage':m.get('status','New'),'Owner':m.get('owner','')})
+            row.update({'Type':classify_document(doc)['type'],'Deal':m.get('deal',''),'Counterparty':m.get('counterparty',''),'Stage':m.get('status','New'),'Owner':m.get('owner','')})
             table.append(row)
         st.dataframe(pd.DataFrame(table),use_container_width=True,hide_index=True,height=min(360,90+len(table)*39))
         with st.expander('Manage agreement metadata'):
@@ -209,9 +316,10 @@ elif nav=='Review workbench':
     else:
         options=labels();selected=st.selectbox('Select agreement to review',list(options),key='review_doc');did=options[selected];doc=st.session_state.docs[did]
         a,b,c=st.columns(3)
-        a.metric('Searchable passages',len(doc['chunks']))
+        a.metric('Document type',classify_document(doc)['type'])
         b.metric('Source characters',f"{doc['chars']:,}")
         c.metric('Document pages / sections',len(doc['pages']))
+        st.caption('Classification basis: '+classify_document(doc)['basis']+'. Check the document title and related exhibits before relying on scope.')
         for warning in doc['warnings']: st.warning(warning)
         col1,col2=st.columns([1,1.1])
         with col1:
@@ -248,14 +356,32 @@ elif nav=='Review workbench':
             findings=st.session_state.findings[did]
             matrix=build_review_matrix(doc,findings,st.session_state.playbook)
             triage=operational_score(matrix)
-            st.subheader('First-pass review queue')
+            st.subheader('Document-aware first-pass review queue')
             m1,m2,m3=st.columns(3)
             m1.metric('High attention',triage['high'])
             m2.metric('Other review prompts',triage['review'])
             m3.metric('Evidence located',triage['located'])
             st.caption('These are deterministic triage counts, **not** legal risk scores, accuracy guarantees, or approval decisions.')
-            st.dataframe(pd.DataFrame(matrix)[['Attention','Clause','Review owner','Evidence','What to verify','Source']],use_container_width=True,hide_index=True,height=430)
-            flags=review_against_playbook(findings,st.session_state.playbook)
+            st.caption(f"Review scope: {classify_document(doc)['type']} · {len(matrix)} relevant clause topics. Optional missing clauses are not automatically classified as policy exceptions.")
+            for row in matrix:
+                if row['Attention'] not in ('High attention','Review needed'): continue
+                with st.container(border=True):
+                    col_a,col_b=st.columns([3,1])
+                    col_a.markdown(f"**{row['Clause']}** · {row['Attention']}")
+                    col_b.caption('Owner: '+row['Review owner'])
+                    st.write(row['What to verify'])
+                    if row.get('Source'):
+                        with st.expander('Inspect original evidence · '+row['Source']):
+                            st.code(row.get('Source excerpt',''),language=None)
+                    else: st.caption('No verified source passage — inspect the complete agreement and any exhibits.')
+            with st.expander('Complete scoped clause matrix'):
+                st.dataframe(pd.DataFrame(matrix)[['Attention','Clause','Review owner','Evidence','What to verify','Source']],use_container_width=True,hide_index=True,height=430)
+            indicators=term_highlights(findings,classify_document(doc)['type'])
+            if indicators:
+                st.subheader('Structured terms (verify wording)')
+                st.dataframe(pd.DataFrame([{'Indicator':row['label'],'Value':f"{row['value']} {row['unit']}",'Source':row['source_id']} for row in indicators]),
+                             use_container_width=True,hide_index=True)
+            flags=policy_flags(findings,st.session_state.playbook,classify_document(doc)['type'])
             if flags:
                 st.subheader('Policy deviation / escalation details')
                 for idx,f in enumerate(flags,1):
@@ -383,7 +509,7 @@ elif nav=='Operations & playbook':
     a,b,c,d=st.columns(4)
     a.metric('Observed intake actions',metrics['intake_events'])
     b.metric('Extraction runs',metrics['review_runs'])
-    c.metric('Current review coverage',f"{metrics['review_coverage_pct']}%")
+    c.metric('Documents with extraction',f"{metrics['review_coverage_pct']}%")
     d.metric('Handoffs awaiting input',metrics['active_handoffs'])
     if st.session_state.docs:
         statuses=[{'Agreement':d['name'],'Stage':st.session_state.review_meta.get(i,{}).get('status','New'),
@@ -420,12 +546,12 @@ elif nav=='Operations & playbook':
         out=io.StringIO();writer=csv.DictWriter(out,fieldnames=list(dict.fromkeys(k for row in rows for k in row)),extrasaction='ignore')
         writer.writeheader();writer.writerows(rows)
         st.download_button('Export deal registry CSV',out.getvalue().encode('utf-8-sig'),file_name='deal_registry.csv',mime='text/csv')
-        structured={'schema_version':'0.2','demo_limitations': 'Not legal advice; review necessary; session only',
+        structured={'schema_version':'0.3','demo_limitations': 'Not legal advice; review necessary; session only',
                     'playbook':st.session_state.playbook,'agreements':[
                         {'name':doc['name'],'fingerprint':did,'metadata':st.session_state.review_meta.get(did,{}),
                          'findings':st.session_state.findings.get(did,[]),
                          'memo':st.session_state.issue_spots.get(did),'human_issue_decisions':st.session_state.review_decisions.get(did,{}),
-                         'policy_flags':review_against_playbook(st.session_state.findings[did],st.session_state.playbook) if did in st.session_state.findings else []}
+                         'policy_flags':policy_flags(st.session_state.findings[did],st.session_state.playbook,classify_document(doc)['type']) if did in st.session_state.findings else []}
                         for did,doc in st.session_state.docs.items()]}
         st.download_button('Export findings & verified sources JSON',json.dumps(structured,indent=2),file_name='review_data_export.json',mime='application/json')
     st.subheader('Evaluation laboratory · fictional contracts')
@@ -446,4 +572,4 @@ elif nav=='Operations & playbook':
     st.markdown('**Not implemented:** authenticated roles and SSO; multi-tenant data separation; encrypted persistence and retention; secure job queue; audit integrity; OCR/visual document review; real DOCX tracked-change redlining; e-signature and CRM integrations; legal review by qualified counsel; evaluation on a representative contract test set; monitoring and incident response.')
 
 st.divider()
-st.caption('ContractDesk Pro 0.2 · Independent concept implementation · No affiliation with BoodleBox · Not for legal decisions or confidential public hosting. AI issues are draft review prompts, not legal advice.')
+st.caption('ContractDesk Pro 0.3 · Independent portfolio prototype · Fictional demo data only · Not legal advice. Review prompts require qualified human judgment.')
