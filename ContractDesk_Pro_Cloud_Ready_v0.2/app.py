@@ -572,4 +572,4 @@ elif nav=='Operations & playbook':
     st.markdown('**Not implemented:** authenticated roles and SSO; multi-tenant data separation; encrypted persistence and retention; secure job queue; audit integrity; OCR/visual document review; real DOCX tracked-change redlining; e-signature and CRM integrations; legal review by qualified counsel; evaluation on a representative contract test set; monitoring and incident response.')
 
 st.divider()
-st.caption('ContractDesk Pro 0.3 · Independent concept implementation · No affiliation with BoodleBox · Not for legal decisions or confidential public hosting. AI issues are draft review prompts, not legal advice.')
+st.caption('ContractDesk Pro 0.3 · Independent portfolio prototype · Fictional demo data only · Not legal advice. Review prompts require qualified human judgment.')
