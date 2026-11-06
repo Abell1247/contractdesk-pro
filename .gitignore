@@ -1,0 +1,19 @@
+# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local environments and developer settings
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Secrets and transient local data
+.streamlit/secrets.toml
+.DS_Store
