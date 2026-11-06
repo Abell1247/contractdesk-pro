@@ -16,6 +16,6 @@ Run `python -m pytest -q` in the application folder (install `requirements-dev.t
 
 ## Explicitly not included
 
-Legal advice/approval, actual lawyer-grade reasoning, generative negotiation without a configured model, authenticated access, durable storage, OCR, native tracked-changes redlining, multi-tenant controls, private commercial use, or validation on real contracts. Fictional playbook thresholds are **not** a legal standard or BoodleBox policy.
+Legal advice/approval, actual lawyer-grade reasoning, generative negotiation without a configured model, authenticated access, durable storage, OCR, native tracked-changes redlining, multi-tenant controls, private commercial use, or validation on real contracts. Fictional playbook thresholds are illustrative and **not** a legal standard or a policy approved by any outside organization.
 
 Deploy through a reviewed pull request. Do not merge into `main` until local UI validation is complete; the existing Streamlit URL will update automatically after merging.
